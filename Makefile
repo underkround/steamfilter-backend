@@ -10,7 +10,7 @@ clean:
 	rm -rf ./bin
 
 deploy: node_modules clean build
-	sls deploy --verbose
+	serverless deploy --verbose
 
 .PHONY: shell
 shell:
