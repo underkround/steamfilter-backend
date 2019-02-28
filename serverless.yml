@@ -39,11 +39,6 @@ package:
   include:
     - ./bin/**
 
-custom:
-  prune:
-    automatic: true
-    number: 1
-
 functions:
   hello:
     handler: bin/hello
@@ -53,6 +48,9 @@ functions:
           method: get
 
 custom:
+  prune:
+    automatic: true
+    number: 1
   customDomain:
     domainName: steamfilter.net
     basePath: ''
