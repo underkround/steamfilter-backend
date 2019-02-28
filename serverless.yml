@@ -2,6 +2,9 @@ service: steamfilter-backend
 
 frameworkVersion: ">=1.28.0 <2.0.0"
 
+plugins:
+  - serverless-domain-manager
+
 provider:
   name: aws
   runtime: go1.x
@@ -42,6 +45,13 @@ functions:
       - http:
           path: hello
           method: get
+
+custom:
+  customDomain:
+    domainName: steamfilter.net
+    basePath: ''
+    stage: ${self:provider.stage}
+    createRoute53Record: true
 
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
