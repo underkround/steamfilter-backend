@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/underkround/steamfilter-backend#readme",
   "devDependencies": {
-    "serverless": "^1.38.0"
+    "serverless": "^1.38.0",
+    "serverless-prune-plugin": "^1.3.2"
   }
 }
