@@ -4,13 +4,13 @@ PATH := $(PATH):$(PWD)/node_modules/.bin
 
 build:
 	#env GOOS=linux go build -ldflags="-s -w" -o bin/hello hello/main.go
-	env GOOS=linux go build -v -ldflags '-d -s -w' -a -tags netgo -installsuffix netgo -o bin/hello hello/main.go
+	env GOOS=linux go build -ldflags '-d -s -w' -a -tags netgo -installsuffix netgo -o bin/hello hello/main.go
 
 clean:
 	rm -rf ./bin
 
 deploy: node_modules clean build
-	sls deploy --verbose
+	serverless deploy --verbose
 
 .PHONY: shell
 shell:
