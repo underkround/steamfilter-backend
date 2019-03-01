@@ -5,6 +5,7 @@ PATH := $(PATH):$(PWD)/node_modules/.bin
 build:
 	#env GOOS=linux go build -ldflags="-s -w" -o bin/hello hello/main.go
 	env GOOS=linux go build -ldflags '-d -s -w' -a -tags netgo -installsuffix netgo -o bin/hello hello/main.go
+	env GOOS=linux go build -ldflags '-d -s -w' -a -tags netgo -installsuffix netgo -o bin/gamelist src/gamelist.go
 
 clean:
 	rm -rf ./bin
@@ -21,6 +22,7 @@ deps:
 	go get github.com/aws/aws-lambda-go/lambda
 	go get github.com/aws/aws-lambda-go/events
 	go get github.com/aws/aws-sdk-go/aws
+	go get -d ./src/
 
 node_modules: package.json
 	npm install
