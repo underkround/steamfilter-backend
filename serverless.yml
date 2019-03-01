@@ -59,7 +59,7 @@ custom:
     number: 1
   customDomain:
     domainName: steamfilter.net
-    basePath: ''
+    basePath: api
     stage: ${self:provider.stage}
     createRoute53Record: true
 
