@@ -47,3 +47,6 @@ upgrade-nix:
 		-e "3s|.*|    url = \"https://github.com/NixOS/nixpkgs-channels/archive/$$rev.tar.gz\";|" \
 		-e "4s|.*|    sha256 = \"$$sha\";|" \
 		$(NIX_FILE)
+
+test:
+	go test ./tests/
