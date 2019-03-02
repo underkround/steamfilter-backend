@@ -45,7 +45,8 @@ func createGameListUrl(user string) (string, error) {
 	}
 
 	// TODO: Different url types
-	url := fmt.Sprintf("https://steamcommunity.com/id/%s/games/?tab=all&xml=1", user)
+	//url := fmt.Sprintf("https://steamcommunity.com/id/%s/games/?tab=all&xml=1", user)
+	url := fmt.Sprintf("http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=668C56808461A02FC1E7F600464FC48D&steamid=%s&format=json", user)
 	return url, nil
 }
 
@@ -55,7 +56,7 @@ func createResponse(status int, body string) Response {
 		IsBase64Encoded: false,
 		Body:            body,
 		Headers: map[string]string{
-			"Content-Type":                "application/xml",
+			"Content-Type":                "application/json",
 			"Access-Control-Allow-Origin": "http://localhost:8080",
 			"X-Content-Type-Options":      "nosniff",
 		},
