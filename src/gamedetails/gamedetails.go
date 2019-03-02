@@ -22,14 +22,12 @@ func fetchGameDetails(url string) (string, error) {
 	res, err := http.Get(url)
 
 	if err != nil {
-		log.Fatal(err)
 		return "", err
 	}
 
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
 		return "", fmt.Errorf("Steam API response code: %s", res.StatusCode)
 	}
 
@@ -54,31 +52,18 @@ func fetchGameDetails(url string) (string, error) {
 }
 
 func createStoreUrl(appId string) (string, error) {
+	fmt.Printf("appId: %s\n", appId)
+	if appId == "" {
+		return "", fmt.Errorf("No appId given")
+	}
+
 	// TODO: Different url types
 	url := fmt.Sprintf("https://store.steampowered.com/app/%s/", appId)
 	return url, nil
 }
 
-func GetGameDetails(ctx context.Context, request Request) (Response, error) {
-	appId := request.QueryStringParameters["appId"]
-	url, err := createStoreUrl(appId)
-	status := 200
-	var body string
-
-	if err != nil {
-		status = 403
-		body = err.Error()
-	} else {
-		gameDetails, err := fetchGameDetails(url)
-		log.Fatal(gameDetails)
-
-		if err != nil {
-			status = 403
-			body = err.Error()
-		}
-	}
-
-	resp := Response{
+func createResponse(status int, body string) Response {
+	return Response{
 		StatusCode:      status,
 		IsBase64Encoded: false,
 		Body:            body,
@@ -87,8 +72,22 @@ func GetGameDetails(ctx context.Context, request Request) (Response, error) {
 		//			"X-MyCompany-Func-Reply": "hello-handler",
 		//		},
 	}
+}
 
-	return resp, nil
+func GetGameDetails(ctx context.Context, request Request) (Response, error) {
+	appId := request.QueryStringParameters["appId"]
+	url, err := createStoreUrl(appId)
+
+	if err != nil {
+		return createResponse(418, err.Error()), nil
+	}
+
+	body, err := fetchGameDetails(url)
+	if err != nil {
+		return createResponse(418, err.Error()), nil
+	}
+
+	return createResponse(200, body), nil
 }
 
 func main() {
