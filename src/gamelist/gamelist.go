@@ -56,7 +56,7 @@ func createResponse(status int, body string) Response {
 func addProfileToJson(inputJson string, profile Profile) string {
 	out := map[string]interface{}{}
 	json.Unmarshal([]byte(inputJson), &out)
-	out["SteamID"] = profile.SteamID
+	out["SteamID64"] = profile.SteamID
 	out["AvatarIcon"] = profile.AvatarIcon
 
 	outputJson, _ := json.Marshal(out)
