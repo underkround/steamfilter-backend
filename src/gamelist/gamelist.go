@@ -54,10 +54,11 @@ func createResponse(status int, body string) Response {
 		StatusCode:      status,
 		IsBase64Encoded: false,
 		Body:            body,
-		//		Headers: map[string]string{
-		//			"Content-Type":           "application/json",
-		//			"X-MyCompany-Func-Reply": "hello-handler",
-		//		},
+		Headers: map[string]string{
+			"Content-Type":                "application/xml",
+			"Access-Control-Allow-Origin": "http://localhost:8080",
+			"X-Content-Type-Options":      "nosniff",
+		},
 	}
 }
 
