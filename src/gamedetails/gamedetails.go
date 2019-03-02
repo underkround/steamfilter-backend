@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"io"
 	"net/http"
 
 	//"github.com/PuerkitoBio/goquery"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
@@ -18,7 +19,69 @@ import (
 type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
 
-func fetchGameDetails(url string) (string, error) {
+type GameDetails struct {
+	appId string
+}
+
+func getGameDetailsFromCache(appId string) (*GameDetails, error) {
+	// TODO
+	return nil, nil
+}
+
+func putGameDetailsToCache(details GameDetails) {
+	// TODO
+}
+
+func formatDetails(details GameDetails) string {
+	// TODO
+	return ""
+}
+
+func parseGameDetails(reader io.Reader) (GameDetails, error) {
+	var details GameDetails
+
+	/*
+		doc, err := goquery.NewDocumentFromReader(reader)
+		if err != nil {
+			return details, err
+		}
+
+		/*
+			// Find the review items
+			doc.Find(".sidebar-reviews article .content-block").Each(func(i int, s *goquery.Selection) {
+				// For each item found, get the band and title
+				dict[s.Find("a").Text()] = s.Find("i").Text()
+			})
+
+			var buf bytes.Buffer
+			body, err := json.Marshal(dict)
+			json.HTMLEscape(&buf, body)
+	*/
+
+	return details, nil
+}
+
+func createStoreUrl(appId string) string {
+	url := fmt.Sprintf("https://store.steampowered.com/app/%s/", appId)
+	return url
+}
+
+func fetchGameDetails(appId string) (string, error) {
+	if appId == "" {
+		return "", fmt.Errorf("No appId given")
+	}
+
+	details, err := getGameDetailsFromCache(appId)
+
+	if err != nil {
+		return "", err
+	}
+
+	if details != nil {
+		return formatDetails(*details), nil
+	}
+
+	url := createStoreUrl(appId)
 	res, err := http.Get(url)
 
 	if err != nil {
@@ -31,35 +94,14 @@ func fetchGameDetails(url string) (string, error) {
 		return "", fmt.Errorf("Steam API response code: %s", res.StatusCode)
 	}
 
-	//doc, err := goquery.NewDocumentFromReader(res.Body)
+	parsedDetails, err := parseGameDetails(res.Body)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
-	/*
-		// Find the review items
-		doc.Find(".sidebar-reviews article .content-block").Each(func(i int, s *goquery.Selection) {
-			// For each item found, get the band and title
-			dict[s.Find("a").Text()] = s.Find("i").Text()
-		})
+	putGameDetailsToCache(parsedDetails)
 
-		var buf bytes.Buffer
-		body, err := json.Marshal(dict)
-		json.HTMLEscape(&buf, body)
-	*/
-
-	return "", err
-}
-
-func createStoreUrl(appId string) (string, error) {
-	fmt.Printf("appId: %s\n", appId)
-	if appId == "" {
-		return "", fmt.Errorf("No appId given")
-	}
-
-	// TODO: Different url types
-	url := fmt.Sprintf("https://store.steampowered.com/app/%s/", appId)
-	return url, nil
+	return formatDetails(parsedDetails), err
 }
 
 func createResponse(status int, body string) Response {
@@ -76,13 +118,7 @@ func createResponse(status int, body string) Response {
 
 func GetGameDetails(ctx context.Context, request Request) (Response, error) {
 	appId := request.QueryStringParameters["appId"]
-	url, err := createStoreUrl(appId)
-
-	if err != nil {
-		return createResponse(418, err.Error()), nil
-	}
-
-	body, err := fetchGameDetails(url)
+	body, err := fetchGameDetails(appId)
 	if err != nil {
 		return createResponse(418, err.Error()), nil
 	}
