@@ -12,6 +12,8 @@ provider:
   profile: steamfilter
   #stage: dev
   region: eu-west-1
+  environment:
+    SteamWebApiKey: ${env:STEAM_WEB_API_KEY} # never commit your secret "668C56808461A02FC1E7F600464FC48D" in Github!
 
 # you can add statements to the Lambda function's IAM Role here
 #  iamRoleStatements:

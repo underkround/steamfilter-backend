@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -19,7 +20,8 @@ type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
 
 func fetchGameList(steamId string) (string, error) {
-	url := fmt.Sprintf("http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=668C56808461A02FC1E7F600464FC48D&steamid=%s&format=json", steamId)
+	apikey := os.Getenv("SteamWebApiKey")
+	url := fmt.Sprintf("http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=%s&steamid=%s&format=json", apikey, steamId)
 	res, err := http.Get(url)
 
 	if err != nil {

@@ -11,6 +11,7 @@ clean:
 	rm -rf ./bin
 
 deploy: node_modules clean build
+	@[ -n "$$STEAM_WEB_API_KEY" ] || (echo "No STEAM_WEB_API_KEY defined!"; exit 1)
 	serverless deploy --verbose
 
 .PHONY: shell
