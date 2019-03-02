@@ -58,8 +58,9 @@ custom:
     automatic: true
     number: 1
   customDomain:
-    domainName: steamfilter.net
-    basePath: api
+    domainName: api.steamfilter.net
+    basePath: ''
+#    certificateName: '*.steamfilter.net'
     stage: ${self:provider.stage}
     createRoute53Record: true
 
