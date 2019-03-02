@@ -40,12 +40,6 @@ package:
     - ./bin/**
 
 functions:
-  hello:
-    handler: bin/hello
-    events:
-      - http:
-          path: hello
-          method: get
   gamelist:
     handler: bin/gamelist
     events:
