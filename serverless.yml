@@ -46,6 +46,12 @@ functions:
       - http:
           path: gamelist
           method: get
+  gamedetails:
+    handler: bin/gamedetails
+    events:
+      - http:
+          path: gamedetails
+          method: get
 
 custom:
   prune:

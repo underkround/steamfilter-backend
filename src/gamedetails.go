@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 
-	"github.com/PuerkitoBio/goquery"
+	//"github.com/PuerkitoBio/goquery"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
@@ -20,64 +18,79 @@ import (
 type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
 
-func fetchGameList(url string) string {
+func fetchGameDetails(url string) (string, error) {
 	res, err := http.Get(url)
 
 	if err != nil {
 		log.Fatal(err)
+		return "", err
 	}
 
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
 		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
+		return "", fmt.Errorf("Steam API response code: %s", res.StatusCode)
 	}
 
-	return string(res.Body)
-}
-
-func createGameListUrl(user string) string {
-	// TODO: Different url types
-	url := fmt.Sprintf("https://steamcommunity.com/id/%s?xml=1", user)
-	return url
-}
-
-func ExampleScrape(ctx context.Context, request Request) (Response, error) {
-	user := request.QueryStringParameters["user"]
-	url := createGameListUrl(user)
-	gameList := fetchGameList(url)
-
-	// Load the HTML document
-	doc, err := goquery.NewDocumentFromReader(res.Body)
+	//doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	dict := make(map[string]string)
+	/*
+		// Find the review items
+		doc.Find(".sidebar-reviews article .content-block").Each(func(i int, s *goquery.Selection) {
+			// For each item found, get the band and title
+			dict[s.Find("a").Text()] = s.Find("i").Text()
+		})
 
-	// Find the review items
-	doc.Find(".sidebar-reviews article .content-block").Each(func(i int, s *goquery.Selection) {
-		// For each item found, get the band and title
-		dict[s.Find("a").Text()] = s.Find("i").Text()
-	})
+		var buf bytes.Buffer
+		body, err := json.Marshal(dict)
+		json.HTMLEscape(&buf, body)
+	*/
 
-	var buf bytes.Buffer
-	body, err := json.Marshal(dict)
-	json.HTMLEscape(&buf, body)
+	return "", err
+}
+
+func createStoreUrl(appId string) (string, error) {
+	// TODO: Different url types
+	url := fmt.Sprintf("https://store.steampowered.com/app/%s/", appId)
+	return url, nil
+}
+
+func GetGameDetails(ctx context.Context, request Request) (Response, error) {
+	appId := request.QueryStringParameters["appId"]
+	url, err := createStoreUrl(appId)
+	status := 200
+	var body string
+
+	if err != nil {
+		status = 403
+		body = err.Error()
+	} else {
+		gameDetails, err := fetchGameDetails(url)
+		log.Fatal(gameDetails)
+
+		if err != nil {
+			status = 403
+			body = err.Error()
+		}
+	}
 
 	resp := Response{
-		StatusCode:      200,
+		StatusCode:      status,
 		IsBase64Encoded: false,
-		Body:            buf.String(),
-		Headers: map[string]string{
-			"Content-Type":           "application/json",
-			"X-MyCompany-Func-Reply": "hello-handler",
-		},
+		Body:            body,
+		//		Headers: map[string]string{
+		//			"Content-Type":           "application/json",
+		//			"X-MyCompany-Func-Reply": "hello-handler",
+		//		},
 	}
 
 	return resp, nil
 }
 
 func main() {
-	lambda.Start(ExampleScrape)
+	lambda.Start(GetGameDetails)
 }
