@@ -1,13 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
@@ -17,49 +16,69 @@ import (
 //
 // https://serverless.com/framework/docs/providers/aws/events/apigateway/#lambda-proxy-integration
 type Response events.APIGatewayProxyResponse
+type Request events.APIGatewayProxyRequest
 
-func ExampleScrape(ctx context.Context) (Response, error) {
-	// Request the HTML page.
-	res, err := http.Get("http://metalsucks.net")
+func fetchGameList(url string) (string, error) {
+	res, err := http.Get(url)
+
 	if err != nil {
 		log.Fatal(err)
+		return "", err
 	}
+
 	defer res.Body.Close()
+
 	if res.StatusCode != 200 {
 		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
+		return "", fmt.Errorf("Steam API response code: %s", res.StatusCode)
 	}
 
-	// Load the HTML document
-	doc, err := goquery.NewDocumentFromReader(res.Body)
+	body, err := ioutil.ReadAll(res.Body)
+	return string(body), err
+}
+
+func createGameListUrl(user string) (string, error) {
+	if user == "" {
+		log.Fatalf("Invalid user: %s", user)
+		return "", fmt.Errorf("Invalid user")
+	}
+
+	// TODO: Different url types
+	url := fmt.Sprintf("https://steamcommunity.com/id/%s?xml=1", user)
+	return url, nil
+}
+
+func GetGameList(ctx context.Context, request Request) (Response, error) {
+	user := request.QueryStringParameters["user"]
+	url, err := createGameListUrl(user)
+	status := 200
+	var body string
+
 	if err != nil {
-		log.Fatal(err)
+		status = 403
+		body = err.Error()
+	} else {
+		body, err = fetchGameList(url)
+
+		if err != nil {
+			status = 403
+			body = err.Error()
+		}
 	}
-
-	dict := make(map[string]string)
-
-	// Find the review items
-	doc.Find(".sidebar-reviews article .content-block").Each(func(i int, s *goquery.Selection) {
-		// For each item found, get the band and title
-		dict[s.Find("a").Text()] = s.Find("i").Text()
-	})
-
-	var buf bytes.Buffer
-	body, err := json.Marshal(dict)
-	json.HTMLEscape(&buf, body)
 
 	resp := Response{
-		StatusCode:      200,
+		StatusCode:      status,
 		IsBase64Encoded: false,
-		Body:            buf.String(),
-		Headers: map[string]string{
-			"Content-Type":           "application/json",
-			"X-MyCompany-Func-Reply": "hello-handler",
-		},
+		Body:            body,
+		//		Headers: map[string]string{
+		//			"Content-Type":           "application/json",
+		//			"X-MyCompany-Func-Reply": "hello-handler",
+		//		},
 	}
 
 	return resp, nil
 }
 
 func main() {
-	lambda.Start(ExampleScrape)
+	lambda.Start(GetGameList)
 }
