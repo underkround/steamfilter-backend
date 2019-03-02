@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -17,7 +18,8 @@ import (
 type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
 
-func fetchGameList(url string) (string, error) {
+func fetchGameList(steamId string) (string, error) {
+	url := fmt.Sprintf("http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=668C56808461A02FC1E7F600464FC48D&steamid=%s&format=json", steamId)
 	res, err := http.Get(url)
 
 	if err != nil {
@@ -27,7 +29,7 @@ func fetchGameList(url string) (string, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		return "", fmt.Errorf("Steam API response code: %s", res.StatusCode)
+		return "", fmt.Errorf("Steam API response code: %v", res.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
@@ -36,18 +38,6 @@ func fetchGameList(url string) (string, error) {
 	}
 
 	return string(body), err
-}
-
-func createGameListUrl(user string) (string, error) {
-	fmt.Printf("User: %s\n", user)
-	if user == "" {
-		return "", fmt.Errorf("No user given")
-	}
-
-	// TODO: Different url types
-	//url := fmt.Sprintf("https://steamcommunity.com/id/%s/games/?tab=all&xml=1", user)
-	url := fmt.Sprintf("http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=668C56808461A02FC1E7F600464FC48D&steamid=%s&format=json", user)
-	return url, nil
 }
 
 func createResponse(status int, body string) Response {
@@ -63,20 +53,35 @@ func createResponse(status int, body string) Response {
 	}
 }
 
+func addProfileToJson(inputJson string, profile Profile) string {
+	out := map[string]interface{}{}
+	json.Unmarshal([]byte(inputJson), &out)
+	out["SteamID"] = profile.SteamID
+	out["AvatarIcon"] = profile.AvatarIcon
+
+	outputJson, _ := json.Marshal(out)
+	return string(outputJson)
+}
+
 func GetGameList(ctx context.Context, request Request) (Response, error) {
 	user := request.QueryStringParameters["user"]
-	url, err := createGameListUrl(user)
+	if user == "" {
+		return createResponse(418, "No user given"), nil
+	}
 
+	profile, err := GetProfile(user)
 	if err != nil {
 		return createResponse(418, err.Error()), nil
 	}
 
-	body, err := fetchGameList(url)
+	body, err := fetchGameList(profile.SteamID)
 	if err != nil {
 		return createResponse(418, err.Error()), nil
 	}
 
-	return createResponse(200, body), nil
+	newJson := addProfileToJson(body, profile)
+
+	return createResponse(200, newJson), nil
 }
 
 func main() {
