@@ -30,6 +30,7 @@ type GameDetails struct {
 	Name     string
 	Icon     string
 	Features []string
+	Genres   []string
 }
 
 func getDb() (*dynamodb.DynamoDB, error) {
@@ -112,11 +113,16 @@ func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 		return s.Text()
 	})
 
+	genres := doc.Find(".block_content .details_block b:contains(Genre)").NextUntil("br").Map(func(i int, s *goquery.Selection) string {
+		return s.Text()
+	})
+
 	details = GameDetails{
 		AppId:    appId,
 		Name:     doc.Find(".apphub_AppName").Text(),
 		Icon:     fmt.Sprintf("https://steamcdn-a.akamaihd.net/steam/apps/%v/capsule_184x69.jpg", appId),
 		Features: features,
+		Genres:   genres,
 	}
 
 	return details, nil
