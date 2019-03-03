@@ -111,7 +111,7 @@ func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 		return details, err
 	}
 
-	features := doc.Find("#category_block .game_area_details_specs").Map(func(i int, s *goquery.Selection) string {
+	features := doc.Find("#category_block .game_area_details_specs").Not(".learning_about").Map(func(i int, s *goquery.Selection) string {
 		return s.Text()
 	})
 
@@ -120,8 +120,14 @@ func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 	})
 
 	releaseDateString := doc.Find(".date").First().Text()
-	releaseDateParsed, _ := time.Parse("2 Jan, 2006", releaseDateString)
-	releaseDate := releaseDateParsed.Unix()
+	var releaseDate int64
+	if len(releaseDateString) == 4 {
+		releaseDateParsed, _ := time.Parse("2006", releaseDateString)
+		releaseDate = releaseDateParsed.Unix()
+	} else {
+		releaseDateParsed, _ := time.Parse("2 Jan, 2006", releaseDateString)
+		releaseDate = releaseDateParsed.Unix()
+	}
 
 	details = GameDetails{
 		AppId:       appId,
