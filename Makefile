@@ -23,7 +23,8 @@ deps:
 	go get github.com/aws/aws-lambda-go/lambda
 	go get github.com/aws/aws-lambda-go/events
 	go get github.com/aws/aws-sdk-go/aws
-	go get -d ./src/
+	go get -d ./src/gamedetails/
+	go get -d ./src/gamelist/
 
 node_modules: package.json
 	npm install

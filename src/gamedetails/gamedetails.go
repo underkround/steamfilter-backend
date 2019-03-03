@@ -11,6 +11,10 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
 // Response is of type APIGatewayProxyResponse since we're leveraging the
@@ -21,19 +25,68 @@ type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
 
 type GameDetails struct {
-	AppId    string
+	AppId    string `json:"appId"`
 	Name     string
 	Icon     string
 	Features []string
 }
 
-func getGameDetailsFromCache(appId string) (*GameDetails, error) {
-	// TODO
-	return nil, nil
+func getDb() (*dynamodb.DynamoDB, error) {
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String("eu-west-1")},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Create DynamoDB client
+	svc := dynamodb.New(sess)
+	return svc, nil
 }
 
-func putGameDetailsToCache(details GameDetails) {
-	// TODO
+func getGameDetailsFromCache(appId string, db *dynamodb.DynamoDB) (*GameDetails, error) {
+	result, err := db.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String("steamfilter-gamecache"),
+		Key: map[string]*dynamodb.AttributeValue{
+			"appId": {
+				S: aws.String(appId),
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	item := GameDetails{}
+	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if item.AppId == "" {
+		return nil, nil
+	}
+
+	return &item, nil
+}
+
+func putGameDetailsToCache(details GameDetails, db *dynamodb.DynamoDB) error {
+	av, err := dynamodbattribute.MarshalMap(details)
+	if err != nil {
+		return err
+	}
+
+	input := &dynamodb.PutItemInput{
+		Item:      av,
+		TableName: aws.String("steamfilter-gamecache"),
+	}
+
+	_, err = db.PutItem(input)
+
+	return err
 }
 
 func formatDetails(details []GameDetails) (string, error) {
@@ -73,15 +126,14 @@ func createStoreUrl(appId string) string {
 	return url
 }
 
-func fetchGameDetails(appId string) (GameDetails, error) {
+func fetchGameDetails(appId string, db *dynamodb.DynamoDB) (GameDetails, error) {
 	var details GameDetails
 
 	if appId == "" {
 		return details, fmt.Errorf("No appId given")
 	}
 
-	cachedDetails, err := getGameDetailsFromCache(appId)
-
+	cachedDetails, err := getGameDetailsFromCache(appId, db)
 	if err != nil {
 		return details, err
 	}
@@ -100,7 +152,7 @@ func fetchGameDetails(appId string) (GameDetails, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		return details, fmt.Errorf("Steam API response code for fetching game list: %s (url: %v)", res.StatusCode, url)
+		return details, fmt.Errorf("Steam API response code for fetching game list: %v (url: %v)", res.StatusCode, url)
 	}
 
 	details, err = parseGameDetails(appId, res.Body)
@@ -108,7 +160,7 @@ func fetchGameDetails(appId string) (GameDetails, error) {
 		return details, err
 	}
 
-	putGameDetailsToCache(details)
+	putGameDetailsToCache(details, db)
 
 	return details, err
 }
@@ -129,11 +181,20 @@ func createResponse(status int, body string, origin string) Response {
 func GetGameDetails(ctx context.Context, request Request) (Response, error) {
 	allAppIds := request.QueryStringParameters["appId"]
 	origin := request.Headers["origin"]
+	if allAppIds == "" {
+		return createResponse(418, "No appIds specified", origin), nil
+	}
+
 	appIds := strings.Split(allAppIds, ",")
+
+	db, err := getDb()
+	if err != nil {
+		return createResponse(500, err.Error(), origin), nil
+	}
 
 	var allDetails []GameDetails
 	for _, appId := range appIds {
-		details, err := fetchGameDetails(appId)
+		details, err := fetchGameDetails(appId, db)
 		allDetails = append(allDetails, details)
 		if err != nil {
 			return createResponse(418, err.Error(), origin), nil
