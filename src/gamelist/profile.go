@@ -10,8 +10,9 @@ import (
 )
 
 type Profile struct {
-	SteamID    string `xml:"steamID64"`
-	AvatarIcon string `xml:"avatarIcon"`
+	SteamID    string `xml:"steamID"`
+	SteamID64  string `xml:"steamID64"`
+	AvatarIcon string `xml:"avatarFull"`
 }
 
 func GetProfileName(s string) (string, bool) {
@@ -64,7 +65,7 @@ func fetchProfile(url string) (Profile, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		return profile, fmt.Errorf("Steam API response code: %v", res.StatusCode)
+		return profile, fmt.Errorf("Steam API response code for fetching profile: %v (url: %v)", res.StatusCode, url)
 	}
 
 	body, err := ioutil.ReadAll(res.Body)

@@ -100,7 +100,7 @@ func fetchGameDetails(appId string) (GameDetails, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		return details, fmt.Errorf("Steam API response code: %s", res.StatusCode)
+		return details, fmt.Errorf("Steam API response code for fetching game list: %s (url: %v)", res.StatusCode, url)
 	}
 
 	details, err = parseGameDetails(appId, res.Body)

@@ -19,9 +19,9 @@ import (
 type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
 
-func fetchGameList(steamId string) (string, error) {
+func fetchGameList(steamId64 string) (string, error) {
 	apikey := os.Getenv("SteamWebApiKey")
-	url := fmt.Sprintf("http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=%s&steamid=%s&format=json", apikey, steamId)
+	url := fmt.Sprintf("http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=%s&steamid=%s&format=json", apikey, steamId64)
 	res, err := http.Get(url)
 
 	if err != nil {
@@ -31,7 +31,7 @@ func fetchGameList(steamId string) (string, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		return "", fmt.Errorf("Steam API response code: %v", res.StatusCode)
+		return "", fmt.Errorf("Steam API response code for fetching game list: %v", res.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
@@ -58,7 +58,8 @@ func createResponse(status int, body string) Response {
 func addProfileToJson(inputJson string, profile Profile) string {
 	out := map[string]interface{}{}
 	json.Unmarshal([]byte(inputJson), &out)
-	out["SteamID64"] = profile.SteamID
+	out["SteamID"] = profile.SteamID
+	out["SteamID64"] = profile.SteamID64
 	out["AvatarIcon"] = profile.AvatarIcon
 
 	outputJson, _ := json.Marshal(out)
@@ -76,7 +77,7 @@ func GetGameList(ctx context.Context, request Request) (Response, error) {
 		return createResponse(418, err.Error()), nil
 	}
 
-	body, err := fetchGameList(profile.SteamID)
+	body, err := fetchGameList(profile.SteamID64)
 	if err != nil {
 		return createResponse(418, err.Error()), nil
 	}
