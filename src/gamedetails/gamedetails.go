@@ -207,6 +207,7 @@ func fetchGameDetails(appId int, db *dynamodb.DynamoDB) (GameDetails, error) {
 	if res.StatusCode == 302 {
 		fmt.Printf("Game is missing from Steam: %v (url: %v)", res.StatusCode, url)
 		details.AppId = appId
+		details.FetchTime = time.Now().Unix()
 		putGameDetailsToCache(details, db)
 		return details, nil
 	}
