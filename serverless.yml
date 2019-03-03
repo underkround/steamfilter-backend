@@ -57,12 +57,14 @@ functions:
     handler: bin/gamelist
     events:
       - http:
+          cors: true
           path: gamelist
           method: get
   gamedetails:
     handler: bin/gamedetails
     events:
       - http:
+          cors: true
           path: gamedetails
           method: get
 

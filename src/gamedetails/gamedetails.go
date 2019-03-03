@@ -113,14 +113,14 @@ func fetchGameDetails(appId string) (GameDetails, error) {
 	return details, err
 }
 
-func createResponse(status int, body string) Response {
+func createResponse(status int, body string, origin string) Response {
 	return Response{
 		StatusCode:      status,
 		IsBase64Encoded: false,
 		Body:            body,
 		Headers: map[string]string{
 			"Content-Type":                "application/json",
-			"Access-Control-Allow-Origin": "http://localhost:8080",
+			"Access-Control-Allow-Origin": origin,
 			"X-Content-Type-Options":      "nosniff",
 		},
 	}
@@ -128,6 +128,7 @@ func createResponse(status int, body string) Response {
 
 func GetGameDetails(ctx context.Context, request Request) (Response, error) {
 	allAppIds := request.QueryStringParameters["appId"]
+	origin := request.Headers["origin"]
 	appIds := strings.Split(allAppIds, ",")
 
 	var allDetails []GameDetails
@@ -135,16 +136,16 @@ func GetGameDetails(ctx context.Context, request Request) (Response, error) {
 		details, err := fetchGameDetails(appId)
 		allDetails = append(allDetails, details)
 		if err != nil {
-			return createResponse(418, err.Error()), nil
+			return createResponse(418, err.Error(), origin), nil
 		}
 	}
 
 	body, err := formatDetails(allDetails)
 	if err != nil {
-		return createResponse(418, err.Error()), nil
+		return createResponse(418, err.Error(), origin), nil
 	}
 
-	return createResponse(200, body), nil
+	return createResponse(200, body, origin), nil
 }
 
 func main() {

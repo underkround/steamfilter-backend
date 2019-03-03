@@ -42,14 +42,14 @@ func fetchGameList(steamId64 string) (string, error) {
 	return string(body), err
 }
 
-func createResponse(status int, body string) Response {
+func createResponse(status int, body string, origin string) Response {
 	return Response{
 		StatusCode:      status,
 		IsBase64Encoded: false,
 		Body:            body,
 		Headers: map[string]string{
 			"Content-Type":                "application/json",
-			"Access-Control-Allow-Origin": "http://localhost:8080",
+			"Access-Control-Allow-Origin": origin,
 			"X-Content-Type-Options":      "nosniff",
 		},
 	}
@@ -68,23 +68,24 @@ func addProfileToJson(inputJson string, profile Profile) string {
 
 func GetGameList(ctx context.Context, request Request) (Response, error) {
 	user := request.QueryStringParameters["user"]
+	origin := request.Headers["origin"]
 	if user == "" {
-		return createResponse(418, "No user given"), nil
+		return createResponse(418, "No user given", origin), nil
 	}
 
 	profile, err := GetProfile(user)
 	if err != nil {
-		return createResponse(418, err.Error()), nil
+		return createResponse(418, err.Error(), origin), nil
 	}
 
 	body, err := fetchGameList(profile.SteamID64)
 	if err != nil {
-		return createResponse(418, err.Error()), nil
+		return createResponse(418, err.Error(), origin), nil
 	}
 
 	newJson := addProfileToJson(body, profile)
 
-	return createResponse(200, newJson), nil
+	return createResponse(200, newJson, origin), nil
 }
 
 func main() {
