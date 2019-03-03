@@ -36,7 +36,7 @@ type GameDetails struct {
 	Developer   string
 	Publisher   string
 	Rating      int
-	// TODO: Store link
+	StoreLink   string
 }
 
 func getDb() (*dynamodb.DynamoDB, error) {
@@ -156,6 +156,7 @@ func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 		Developer:   developer,
 		Publisher:   publisher,
 		Rating:      rating,
+		StoreLink:   fmt.Sprintf("https://store.steampowered.com/app/%v/", appId),
 	}
 
 	return details, nil
