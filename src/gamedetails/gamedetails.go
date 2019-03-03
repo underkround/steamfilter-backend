@@ -33,6 +33,8 @@ type GameDetails struct {
 	Features    []string
 	Genres      []string
 	ReleaseDate int64
+	Developer   string
+	Publisher   string
 }
 
 func getDb() (*dynamodb.DynamoDB, error) {
@@ -129,6 +131,9 @@ func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 		releaseDate = releaseDateParsed.Unix()
 	}
 
+	developer := doc.Find("b:contains(Developer)").Next().Text()
+	publisher := doc.Find("b:contains(Publisher)").Next().Text()
+
 	details = GameDetails{
 		AppId:       appId,
 		Name:        doc.Find(".apphub_AppName").Text(),
@@ -136,6 +141,8 @@ func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 		Features:    features,
 		Genres:      genres,
 		ReleaseDate: releaseDate,
+		Developer:   developer,
+		Publisher:   publisher,
 	}
 
 	return details, nil
