@@ -143,7 +143,12 @@ func fetchGameDetails(appId int, db *dynamodb.DynamoDB) (GameDetails, error) {
 
 	url := createStoreUrl(appId)
 	fmt.Printf("Fetching store page %s\n", url)
-	res, err := http.Get(url)
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	res, err := client.Get(url)
 
 	if err != nil {
 		return details, err
@@ -207,15 +212,21 @@ func GetGameDetails(ctx context.Context, request Request) (Response, error) {
 		}
 
 		details, err := fetchGameDetails(appId, db)
-		allDetails = append(allDetails, details)
 		if err != nil {
-			return createResponse(418, err.Error(), origin), nil
+			fmt.Printf("Error getting data for AppId %v, %v\n", appId, err.Error())
+			continue
 		}
+		allDetails = append(allDetails, details)
 	}
 
 	body, err := formatDetails(allDetails)
 	if err != nil {
 		return createResponse(418, err.Error(), origin), nil
+	}
+
+	if body == "null" {
+		// HACK THE PLANET
+		body = "[]"
 	}
 
 	return createResponse(200, body, origin), nil
