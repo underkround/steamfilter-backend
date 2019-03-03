@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/aws/aws-lambda-go/events"
@@ -26,11 +27,12 @@ type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
 
 type GameDetails struct {
-	AppId    int
-	Name     string
-	Icon     string
-	Features []string
-	Genres   []string
+	AppId       int
+	Name        string
+	Icon        string
+	Features    []string
+	Genres      []string
+	ReleaseDate int64
 }
 
 func getDb() (*dynamodb.DynamoDB, error) {
@@ -117,12 +119,17 @@ func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 		return s.Text()
 	})
 
+	releaseDateString := doc.Find(".date").First().Text()
+	releaseDateParsed, _ := time.Parse("2 Jan, 2006", releaseDateString)
+	releaseDate := releaseDateParsed.Unix()
+
 	details = GameDetails{
-		AppId:    appId,
-		Name:     doc.Find(".apphub_AppName").Text(),
-		Icon:     fmt.Sprintf("https://steamcdn-a.akamaihd.net/steam/apps/%v/capsule_184x69.jpg", appId),
-		Features: features,
-		Genres:   genres,
+		AppId:       appId,
+		Name:        doc.Find(".apphub_AppName").Text(),
+		Icon:        fmt.Sprintf("https://steamcdn-a.akamaihd.net/steam/apps/%v/capsule_184x69.jpg", appId),
+		Features:    features,
+		Genres:      genres,
+		ReleaseDate: releaseDate,
 	}
 
 	return details, nil
