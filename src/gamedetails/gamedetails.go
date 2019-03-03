@@ -37,6 +37,8 @@ type GameDetails struct {
 	Publisher   string
 	Rating      int
 	StoreLink   string
+	FetchTime   int64
+	UserTags    []string
 }
 
 func getDb() (*dynamodb.DynamoDB, error) {
@@ -146,6 +148,10 @@ func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 		}
 	}
 
+	userTags := doc.Find(".glance_tags a").Map(func(i int, s *goquery.Selection) string {
+		return strings.TrimSpace(s.Text())
+	})
+
 	details = GameDetails{
 		AppId:       appId,
 		Name:        doc.Find(".apphub_AppName").Text(),
@@ -157,6 +163,8 @@ func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 		Publisher:   publisher,
 		Rating:      rating,
 		StoreLink:   fmt.Sprintf("https://store.steampowered.com/app/%v/", appId),
+		FetchTime:   time.Now().Unix(),
+		UserTags:    userTags,
 	}
 
 	return details, nil
