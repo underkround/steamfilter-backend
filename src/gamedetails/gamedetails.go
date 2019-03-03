@@ -197,9 +197,10 @@ func fetchGameDetails(appId int, db *dynamodb.DynamoDB) (GameDetails, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode == 302 {
+		fmt.Printf("Game is missing from Steam: %v (url: %v)", res.StatusCode, url)
 		details.AppId = appId
 		putGameDetailsToCache(details, db)
-		return details, fmt.Errorf("Game is missing from Steam: %v (url: %v)", res.StatusCode, url)
+		return details, nil
 	}
 
 	if res.StatusCode != 200 {
@@ -250,6 +251,7 @@ func GetGameDetails(ctx context.Context, request Request) (Response, error) {
 		}
 	}
 
+	startTime := time.Now()
 	var allDetails []GameDetails
 	for _, appIdString := range appIds {
 		appId, _ := strconv.Atoi(appIdString)
@@ -263,8 +265,12 @@ func GetGameDetails(ctx context.Context, request Request) (Response, error) {
 			continue
 		}
 
-		if details.Name != "" {
-			allDetails = append(allDetails, details)
+		//if details.Name != "" {
+		allDetails = append(allDetails, details)
+		//}
+
+		if time.Since(startTime) > 2e9 {
+			break
 		}
 	}
 
