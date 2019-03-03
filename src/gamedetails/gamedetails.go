@@ -35,6 +35,8 @@ type GameDetails struct {
 	ReleaseDate int64
 	Developer   string
 	Publisher   string
+	Rating      int
+	// TODO: Store link
 }
 
 func getDb() (*dynamodb.DynamoDB, error) {
@@ -134,6 +136,16 @@ func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 	developer := doc.Find("b:contains(Developer)").Next().Text()
 	publisher := doc.Find("b:contains(Publisher)").Next().Text()
 
+	rating := -1
+	ratingString, exists := doc.Find(".user_reviews_summary_row").Last().Attr("data-tooltip-html")
+	if exists {
+		i := strings.Index(ratingString, "%")
+		if i >= 0 {
+			ratingz := ratingString[0:i]
+			rating, _ = strconv.Atoi(ratingz)
+		}
+	}
+
 	details = GameDetails{
 		AppId:       appId,
 		Name:        doc.Find(".apphub_AppName").Text(),
@@ -143,6 +155,7 @@ func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 		ReleaseDate: releaseDate,
 		Developer:   developer,
 		Publisher:   publisher,
+		Rating:      rating,
 	}
 
 	return details, nil
