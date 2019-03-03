@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -25,7 +26,7 @@ type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
 
 type GameDetails struct {
-	AppId    string `json:"appId"`
+	AppId    int
 	Name     string
 	Icon     string
 	Features []string
@@ -45,12 +46,12 @@ func getDb() (*dynamodb.DynamoDB, error) {
 	return svc, nil
 }
 
-func getGameDetailsFromCache(appId string, db *dynamodb.DynamoDB) (*GameDetails, error) {
+func getGameDetailsFromCache(appId int, db *dynamodb.DynamoDB) (*GameDetails, error) {
 	result, err := db.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String("steamfilter-gamecache"),
 		Key: map[string]*dynamodb.AttributeValue{
-			"appId": {
-				S: aws.String(appId),
+			"AppId": {
+				N: aws.String(strconv.Itoa(appId)),
 			},
 		},
 	})
@@ -66,7 +67,7 @@ func getGameDetailsFromCache(appId string, db *dynamodb.DynamoDB) (*GameDetails,
 		return nil, err
 	}
 
-	if item.AppId == "" {
+	if item.AppId == 0 {
 		return nil, nil
 	}
 
@@ -99,7 +100,7 @@ func formatDetails(details []GameDetails) (string, error) {
 	return string(js), err
 }
 
-func parseGameDetails(appId string, reader io.Reader) (GameDetails, error) {
+func parseGameDetails(appId int, reader io.Reader) (GameDetails, error) {
 	var details GameDetails
 
 	doc, err := goquery.NewDocumentFromReader(reader)
@@ -114,35 +115,34 @@ func parseGameDetails(appId string, reader io.Reader) (GameDetails, error) {
 	details = GameDetails{
 		AppId:    appId,
 		Name:     doc.Find(".apphub_AppName").Text(),
-		Icon:     fmt.Sprintf("https://steamcdn-a.akamaihd.net/steam/apps/%s/capsule_184x69.jpg", appId),
+		Icon:     fmt.Sprintf("https://steamcdn-a.akamaihd.net/steam/apps/%v/capsule_184x69.jpg", appId),
 		Features: features,
 	}
 
 	return details, nil
 }
 
-func createStoreUrl(appId string) string {
-	url := fmt.Sprintf("https://store.steampowered.com/app/%s/", appId)
+func createStoreUrl(appId int) string {
+	url := fmt.Sprintf("https://store.steampowered.com/app/%v/", appId)
 	return url
 }
 
-func fetchGameDetails(appId string, db *dynamodb.DynamoDB) (GameDetails, error) {
+func fetchGameDetails(appId int, db *dynamodb.DynamoDB) (GameDetails, error) {
 	var details GameDetails
 
-	if appId == "" {
-		return details, fmt.Errorf("No appId given")
-	}
+	if db != nil {
+		cachedDetails, err := getGameDetailsFromCache(appId, db)
+		if err != nil {
+			return details, err
+		}
 
-	cachedDetails, err := getGameDetailsFromCache(appId, db)
-	if err != nil {
-		return details, err
-	}
-
-	if cachedDetails != nil {
-		return *cachedDetails, nil
+		if cachedDetails != nil {
+			return *cachedDetails, nil
+		}
 	}
 
 	url := createStoreUrl(appId)
+	fmt.Printf("Fetching store page %s\n", url)
 	res, err := http.Get(url)
 
 	if err != nil {
@@ -160,7 +160,9 @@ func fetchGameDetails(appId string, db *dynamodb.DynamoDB) (GameDetails, error) 
 		return details, err
 	}
 
-	putGameDetailsToCache(details, db)
+	if db != nil {
+		putGameDetailsToCache(details, db)
+	}
 
 	return details, err
 }
@@ -180,6 +182,7 @@ func createResponse(status int, body string, origin string) Response {
 
 func GetGameDetails(ctx context.Context, request Request) (Response, error) {
 	allAppIds := request.QueryStringParameters["appId"]
+	skipCache := request.QueryStringParameters["skipCache"]
 	origin := request.Headers["origin"]
 	if allAppIds == "" {
 		return createResponse(418, "No appIds specified", origin), nil
@@ -187,13 +190,22 @@ func GetGameDetails(ctx context.Context, request Request) (Response, error) {
 
 	appIds := strings.Split(allAppIds, ",")
 
-	db, err := getDb()
-	if err != nil {
-		return createResponse(500, err.Error(), origin), nil
+	var db *dynamodb.DynamoDB
+	if skipCache == "" {
+		var err error
+		db, err = getDb()
+		if err != nil {
+			return createResponse(500, err.Error(), origin), nil
+		}
 	}
 
 	var allDetails []GameDetails
-	for _, appId := range appIds {
+	for _, appIdString := range appIds {
+		appId, _ := strconv.Atoi(appIdString)
+		if appId == 0 {
+			continue
+		}
+
 		details, err := fetchGameDetails(appId, db)
 		allDetails = append(allDetails, details)
 		if err != nil {
